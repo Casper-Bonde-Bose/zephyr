@@ -79,12 +79,13 @@ struct bt_iso_chan_qos {
 	/** @brief Channel direction
 	 *
 	 *  Possible values: BT_ISO_CHAN_QOS_IN, BT_ISO_CHAN_QOS_OUT or
-	 *  BT_ISO_CHAN_QOS_INOUT.
+	 *  BT_ISO_CHAN_QOS_INOUT. Shall be BT_ISO_CHAN_QOS_OUT for broadcast
+	 *  transmitting, and BT_ISO_CHAN_QOS_IN for broadcast receiver.
 	 */
 	uint8_t				dir;
 	/** Channel interval */
 	uint32_t			interval;
-	/** Channel SCA */
+	/** Channel SCA - Only for CIS */
 	uint8_t				sca;
 	/** Channel packing mode */
 	uint8_t				packing;
@@ -116,6 +117,101 @@ struct bt_iso_chan_path {
 	uint8_t				cc_len;
 	/** Codec Configuration */
 	uint8_t				cc[0];
+};
+
+struct bt_iso_big {
+	/** Array of ISO channels to setup as BIS (the BIG). */
+	struct bt_iso_chan **bis;
+
+	/** Total number of BISes in the BIG. */
+	uint8_t  num_bis;
+
+	/** The BIG handle */
+	uint8_t handle;
+};
+
+struct bt_iso_big_create_param_t {
+	/** Reference to the BIG */
+	struct bt_iso_big *big;
+
+	/** Whether or not to encrypt the streams. */
+	bool  encryption;
+
+	/** @brief Broadcast code
+	 *
+	 *  The code used to derive the session key that is used to encrypt and
+	 *  decrypt BIS payloads.
+	 */
+	uint8_t  bcode[16];
+};
+
+struct bt_iso_big_sync_param_t {
+	/** Bitfield of the BISes to sync to */
+	uint32_t bis_bitfield;
+
+	/** @brief Maximum subevents
+	 *
+	 *  The MSE (Maximum Subevents) parameter is the maximum number of subevents that a
+	 *  Controller should use to receive data payloads in each interval for a BIS
+	 */
+	uint32_t mse;
+
+	/** Synchronization timeout for the BIG (N * 10 MS) */
+	uint16_t sync_timeout;
+
+	/** Whether or not the streams of the BIG are encrypted */
+	bool  encryption;
+
+	/** @brief Broadcast code
+	 *
+	 *  The code used to derive the session key that is used to encrypt and
+	 *  decrypt BIS payloads.
+	 */
+	uint8_t  bcode[16];
+};
+
+struct bt_iso_biginfo {
+	/** Address of the advertiser */
+	const bt_addr_le_t *addr;
+
+	/** Advertiser SID */
+	uint8_t sid;
+
+	/** Number of BISes in the BIG */
+	uint8_t  num_bis;
+
+	/** Maximum number of subevents in each isochronous event */
+	uint8_t  sub_evt_count;
+
+	/** Interval between two BIG anchor point (N * 1.25 ms) */
+	uint16_t iso_interval;
+
+	/** The number of new payloads in each BIS event */
+	uint8_t  burst_number;
+
+	/** Offset used for pre-transmissions */
+	uint8_t  offset;
+
+	/** The number of times a payload is transmitted in a BIS event */
+	uint8_t  rep_count;
+
+	/** Maximum size, in octets, of the payload */
+	uint16_t max_pdu;
+
+	/** The interval, in microseconds, of periodic SDUs. */
+	uint32_t sdu_interval;
+
+	/** Maximum size of an SDU, in octets. */
+	uint16_t max_sdu;
+
+	/** Channel PHY */
+	uint8_t  phy;
+
+	/** Channel framing mode */
+	uint8_t  framing;
+
+	/** Whether or not the BIG is encrypted */
+	bool  encryption;
 };
 
 /** @brief ISO Channel operations structure. */
@@ -244,6 +340,35 @@ int bt_iso_chan_disconnect(struct bt_iso_chan *chan);
  *  @return Bytes sent in case of success or negative value in case of error.
  */
 int bt_iso_chan_send(struct bt_iso_chan *chan, struct net_buf *buf);
+
+/** @brief Creates a BIG as a broadcaster
+ *
+ *  @param padv    Pointer to the periodic advertising object the BIGInfo shall be sent on.
+ *  @param param   The parameters used to create and enable the BIG. The QOS parameters are
+ *                 determined by the QOS field of the first BIS in the BIS list of this parameter.
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int bt_iso_big_create(struct bt_le_ext_adv *padv, struct bt_iso_big_create_param_t *param);
+
+/** @brief Terminates a BIG as a broadcaster or receiver
+ *
+ *  @param big    Pointer to the BIG structure.
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int bt_iso_big_terminate(struct bt_iso_big *big);
+
+/** @brief Creates a BIG as a receiver
+ *
+ *  @param big     Pointer to the BIG structure that will be used as the receiver.
+ *  @param sync    Pointer to the periodic advertising sync object the BIGInfo was received on.
+ *  @param param   The parameters used to create and enable the BIG sync.
+ *
+ *  @return 0 in case of success or negative value in case of error.
+ */
+int bt_iso_big_sync(struct bt_iso_big *big, struct bt_le_per_adv_sync *sync,
+		    struct bt_iso_big_sync_param_t *param);
 
 #ifdef __cplusplus
 }

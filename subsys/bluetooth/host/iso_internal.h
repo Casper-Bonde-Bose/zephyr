@@ -11,6 +11,7 @@
 #include <bluetooth/iso.h>
 
 #define BT_ISO_DATA_PATH_DISABLED			0xFF
+#define BT_ISO_INVALID_BIG_HANDLE			0xFF
 
 struct iso_data {
 	/** BT_BUF_ISO_IN */
@@ -46,6 +47,18 @@ void hci_le_cis_estabilished(struct net_buf *buf);
 
 /* Process CIS Request event */
 void hci_le_cis_req(struct net_buf *buf);
+
+/** Process BIG complete event */
+void hci_le_big_complete(struct net_buf *buf);
+
+/** Process BIG terminate event */
+void hci_le_big_termimate(struct net_buf *buf);
+
+/** Process BIG sync established event */
+void hci_le_big_sync_established(struct net_buf *buf);
+
+/** Process BIG sync lost event */
+void hci_le_big_sync_lost(struct net_buf *buf);
 
 /* Notify ISO channels of a new connection */
 int bt_iso_accept(struct bt_conn *conn);
