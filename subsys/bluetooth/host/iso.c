@@ -1220,13 +1220,13 @@ static int hci_le_create_big(struct bt_le_ext_adv *padv, struct bt_iso_big_creat
 		memset(req->bcode, 0, sizeof(req->bcode));
 	}
 
+	bigs[big->handle] = big;
+
 	err = bt_hci_cmd_send_sync(BT_HCI_OP_LE_CREATE_BIG, buf, &rsp);
 
 	if (err) {
 		return err;
 	}
-
-	bigs[big->handle] = big;
 
 	for (int i = 0; i < big->num_bis; i++) {
 		bt_iso_chan_set_state(big->bis[i], BT_ISO_CONNECT);
