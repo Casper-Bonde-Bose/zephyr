@@ -303,6 +303,12 @@ static int cmd_big_create(const struct shell *shell, size_t argc, char *argv[])
 	}
 
 	bis_iso_qos.dir = BT_ISO_CHAN_QOS_OUT;
+	bis_iso_qos.interval = 10000; /* us */
+	bis_iso_qos.latency = 20;     /* ms */
+	bis_iso_qos.phy = 0x02;       /* 2 MBit */
+	bis_iso_qos.rtn = 2;
+	bis_iso_qos.sdu = 120;
+
 
 	param.big = &big;
 	param.encryption = false;
