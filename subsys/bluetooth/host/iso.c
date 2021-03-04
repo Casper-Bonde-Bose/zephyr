@@ -1495,7 +1495,7 @@ static int hci_le_big_create_sync(const struct bt_le_per_adv_sync *sync, struct 
 				BT_DBG("BIG cannot contain %u BISes", bit_idx + 1);
 				return -EINVAL;
 			}
-			req->bis[bit_idx++] = i;
+			req->bis[bit_idx++] = i + 1;
 		}
 	}
 
