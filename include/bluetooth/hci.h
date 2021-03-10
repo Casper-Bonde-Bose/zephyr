@@ -2417,6 +2417,7 @@ struct bt_hci_evt_le_big_sync_established {
 	uint8_t  pto;
 	uint8_t  irc;
 	uint16_t max_pdu;
+	uint16_t iso_interval;
 	uint8_t  num_bis;
 	uint16_t handle[0];
 } __packed;
