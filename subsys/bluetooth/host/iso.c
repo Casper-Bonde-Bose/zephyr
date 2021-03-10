@@ -1234,6 +1234,45 @@ static int hci_le_create_big(struct bt_le_ext_adv *padv, struct bt_iso_big_creat
 	return err;
 }
 
+
+int bt_iso_big_setup_data_path(struct bt_conn *conn)
+{
+	struct bt_iso_data_path data_path;
+	struct bt_iso_chan_path path;
+
+	data_path.dir = BT_HCI_DATAPATH_DIR_HOST_TO_CTLR;
+	data_path.pid = 1;
+	data_path.path = &path;
+
+	path.pid = 1;
+	path.format = 6;
+	path.cid = 0;
+	path.vid = 0;
+	path.delay = 10;
+	path.cc_len = 0;
+
+	return hci_le_setup_iso_data_path(conn, &data_path);
+}
+
+int bt_iso_bis_receiver_setup_data_path(struct bt_conn *conn)
+{
+	struct bt_iso_data_path data_path;
+	struct bt_iso_chan_path path;
+
+	data_path.dir = BT_HCI_DATAPATH_DIR_CTLR_TO_HOST;
+	data_path.pid = 1;
+	data_path.path = &path;
+
+	path.pid = 1;
+	path.format = 0;
+	path.cid = 0;
+	path.vid = 0;
+	path.cc_len = 0;
+
+	return hci_le_setup_iso_data_path(conn, &data_path);
+}
+
+
 int bt_iso_big_create(struct bt_le_ext_adv *padv, struct bt_iso_big_create_param_t *param)
 {
 	struct bt_iso_big *big = param->big;
@@ -1263,6 +1302,15 @@ int bt_iso_big_create(struct bt_le_ext_adv *padv, struct bt_iso_big_create_param
 		return err;
 	}
 
+/*	for (int i = 0; i < big->num_bis; i++) {
+		err = bt_iso_big_setup_data_path(big->bis[i]->conn);
+		if (err) {
+			BT_DBG("Could not setup datapath for bis %d err: %d", i, err);
+			cleanup_big(big);
+			return err;
+		}
+	}
+*/
 	return err;
 }
 
@@ -1394,10 +1442,18 @@ void hci_le_big_complete(struct net_buf *buf)
 
 		bis->conn->handle = sys_le16_to_cpu(evt->handle[i]);
 		bt_iso_chan_set_state(bis, BT_ISO_CONNECTED);
-
+		/* This requires the connected call-back to do the bind operation before
+		 * the call to bt_iso_connected() is made */
 		if (bis->ops->connected) {
 			bis->ops->connected(bis);
 		}
+		int err = bt_iso_big_setup_data_path(bis->conn);
+		if (err) {
+			BT_DBG("Could not setup datapath for bis %d err: %d", i, err);
+			cleanup_big(big);
+			return;
+		}
+//		bt_iso_connected(bis->conn);
 	}
 }
 
@@ -1419,8 +1475,10 @@ void hci_le_big_sync_established(struct net_buf *buf)
 	struct bt_hci_evt_le_big_sync_established *evt = (void *)buf->data;
 	uint16_t big_handle = sys_le16_to_cpu(evt->big_handle);
 	struct bt_iso_big *big = bigs[big_handle];
+	BT_DBG("hci_le_big_sync_established");
 
 	if (evt->status || evt->num_bis != big->num_bis) {
+		BT_DBG("evt->num_bis: %d  big->num_bis: %d", evt->num_bis, big->num_bis);
 		cleanup_big(big);
 		for (int i = 0; i < big->num_bis; i++) {
 			struct bt_iso_chan *bis = big->bis[i];
@@ -1439,9 +1497,19 @@ void hci_le_big_sync_established(struct net_buf *buf)
 		bis->conn->handle = bis_handle;
 
 		bt_iso_chan_set_state(bis, BT_ISO_CONNECTED);
+		//bt_iso_connected(bis->conn);
 
 		if (bis->ops->connected) {
 			bis->ops->connected(bis);
+		}
+
+		BT_DBG("Calling bt_iso_bis_receiver_setup_data_path");
+
+		int err = bt_iso_bis_receiver_setup_data_path(bis->conn);
+		if (err) {
+			BT_DBG("Could not setup datapath for bis %d err: %d", i, err);
+			cleanup_big(big);
+			return;
 		}
 	}
 
